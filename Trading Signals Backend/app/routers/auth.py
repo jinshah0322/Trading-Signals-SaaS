@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from app.models.auth import SignupRequest, LoginRequest, LoginResponse
 from app.models.user import UserResponse, UserInDB
 from app.services.auth_service import (
@@ -8,14 +8,16 @@ from app.services.auth_service import (
     create_access_token
 )
 from app.dependencies import get_current_user
+from app.middleware.rate_limit import rate_limit
 
 router = APIRouter()
 
 
 @router.post("/signup", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
-async def signup(request: SignupRequest):
+@rate_limit(key_prefix="signup", max_requests=5, window_seconds=900, identifier="ip")
+async def signup(request: Request, data: SignupRequest):
     # Check if user already exists
-    existing_user = await get_user_by_email(request.email)
+    existing_user = await get_user_by_email(data.email)
     
     if existing_user:
         raise HTTPException(
@@ -24,7 +26,7 @@ async def signup(request: SignupRequest):
         )
     
     # Create new user
-    user = await create_user(request.email, request.password)
+    user = await create_user(data.email, data.password)
     
     # Generate JWT token
     access_token = create_access_token(
@@ -48,9 +50,10 @@ async def signup(request: SignupRequest):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(request: LoginRequest):
+@rate_limit(key_prefix="login", max_requests=5, window_seconds=900, identifier="email")
+async def login(request: Request, data: LoginRequest):
     # Authenticate user
-    user = await authenticate_user(request.email, request.password)
+    user = await authenticate_user(data.email, data.password)
     
     if not user:
         raise HTTPException(
