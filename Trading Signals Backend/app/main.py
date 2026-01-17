@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import create_db_pool, close_db_pool
 from app.redis_client import create_redis_pool, close_redis_pool
+from app.routers import auth_router
 
 
 @asynccontextmanager
@@ -94,3 +95,5 @@ async def health_check():
         health_status["redis_error"] = str(e)
     
     return health_status
+
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
