@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import create_db_pool, close_db_pool
 from app.redis_client import create_redis_pool, close_redis_pool
-from app.routers import auth_router, billing_router
+from app.routers import auth_router, billing_router, signals_router
 
 
 @asynccontextmanager
@@ -98,3 +98,4 @@ async def health_check():
 
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(billing_router, prefix="/billing", tags=["Billing"])
+app.include_router(signals_router, prefix="/signals", tags=["Trading Signals"])
