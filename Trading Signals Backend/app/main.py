@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import create_db_pool, close_db_pool
@@ -51,6 +53,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Custom exception handler for validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Convert Pydantic validation errors to a consistent format matching HTTPException
+    This ensures frontend gets uniform error responses
+    """
+    # Extract first error message
+    errors = exc.errors()
+    if errors:
+        first_error = errors[0]
+        field = first_error['loc'][-1] if first_error['loc'] else 'unknown'
+        message = first_error['msg']
+        
+        # Custom formatting for cleaner messages
+        if field != 'unknown':
+            error_message = f"{field.capitalize()}: {message}"
+        else:
+            error_message = message
+    else:
+        error_message = "Validation error"
+    
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": error_message}
+    )
 
 
 @app.get("/")
